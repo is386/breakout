@@ -1,0 +1,2 @@
+ball={}
+ball.name = "dave"
