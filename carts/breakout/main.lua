@@ -1,6 +1,7 @@
 levelNum = 1
 levels = {
-  "///BBBBBBBBBBB/BBIBBEBBIBB/EHHHHHHHHHE",
+  "///BBBBBBBBBBB/BHBHBHBHBHB/PPPIIIIIII",
+  "///BBBBBBBBBBB/XXBBBBBBBBXX/XXBBBBBBBBXX/BBBBBBBBBBB/XXIIIIIIXX/",
   "//HHHHHHHHH/XXHHHHHHHXX/XXHHHHHHHXX/HHHHHHHHH///XXBBBBBXX/XXBBBBBBBBXX/BBBBBBBBBBB/XXIIIIIIXX/",
 }
 
@@ -28,13 +29,18 @@ function initGame()
     a = 1.15,
     w = 24,
     h = 2,
-    color = 7
+    color = 7,
+    stickyPowerUp = false,
+    scoreMultiplier = 1,
+    powerUps = {}
   }
   paddle["y"] = gameFrame.y1 - paddle.h
 
   combo = 0
   bricksDestroyed = 0
   indestructibleBricks = 0
+
+  powerUpPills = {}
 
   initBall()
 
@@ -50,6 +56,7 @@ function initBall()
     angle = 1,
     color = 6,
     sticky = true,
+    mega = false
   }
   ball.dx = ball.dxMax
   ball.dy = ball.dyMax
@@ -100,6 +107,12 @@ function initBricks(x, y, w, h)
           y + (row * (h + 2)), 
           w, h
         )
+      elseif b == "P" then
+          bricks[n] = createPowerUpBrick(
+            x + (col * (w + 2)), 
+            y + (row * (h + 2)), 
+            w, h, b
+          )
       end
       col += 1
       n += 1
@@ -122,7 +135,7 @@ Brick = {
     if continueCombo then
       combo += 1
     end
-    score += 30 * combo
+    score += 30 * combo * paddle.scoreMultiplier
     self.show = false
     bricksDestroyed += 1
   end
@@ -158,12 +171,17 @@ function createHardBrick(x, y, w, h)
       end
       self.hp -= 1
       self.color = 13
+
+      if ball.mega then
+        self.hp = 0
+      end
+
       if self.hp <= 0 then
         self.show = false
         if continueCombo then
           combo += 1
         end
-        score += 30 * combo
+        score += 30 * combo * paddle.scoreMultiplier
         bricksDestroyed += 1
       end
     end
@@ -202,7 +220,7 @@ function createExplodingBrick(x, y, w, h)
         combo += 1
       end
 
-      score += 30 * combo
+      score += 30 * combo * paddle.scoreMultiplier
       bricksDestroyed += 1
 
       for i = 0, #bricks do
@@ -216,6 +234,142 @@ function createExplodingBrick(x, y, w, h)
         end
       end
     end
+  })
+end
+
+-- ===========================
+-- Power Up Functions
+-- ===========================
+
+PowerUp = {
+  x = 0,
+  y = 0,
+  w = 8,
+  h = 8,
+  timer = 600,
+  show = true,
+  sprite = 0,
+  onCollision = function (self)
+  end,
+  remove = function (self)
+  end,
+}
+
+function PowerUp:New(obj)
+  obj = obj or {}
+  setmetatable(obj, {__index = self})
+  return obj
+end
+
+function createPowerUpBrick(x, y, w, h)
+  return Brick:New({
+    x = x,
+    y = y,
+    w = w,
+    h = h,
+    color = 12,
+    onHit = function(self, playSound, continueCombo)
+      if playSound then
+        sfx(3 + min(combo, 7))
+      end
+      if continueCombo then
+        combo += 1
+      end
+      score += 30 * combo * paddle.scoreMultiplier
+      self.show = false
+      bricksDestroyed += 1
+
+      local type = flr(rnd(5))
+      if type == 0 then
+        powerUpPills[#powerUpPills + 1] = createPlayerExtendPowerUp(self.x, self.y)
+      elseif type == 1 then
+        powerUpPills[#powerUpPills + 1] = createCatchPowerUp(self.x, self.y)
+      elseif type == 2 then
+        powerUpPills[#powerUpPills + 1] = createMegaBallPowerUp(self.x, self.y)
+      elseif type == 3 then
+        powerUpPills[#powerUpPills + 1] = createWidenPowerUp(self.x, self.y)
+      elseif type == 4 then
+        powerUpPills[#powerUpPills + 1] = createDoublePointsPowerUp(self.x, self.y)
+      end
+    end
+  })
+end
+
+function createPlayerExtendPowerUp(x, y)
+  return PowerUp:New({
+    x = x,
+    y = y,
+    sprite = 0,
+    timer = -1,
+    onCollision = function(self)
+      lives += 1
+      sfx(19)
+      self.show = false
+    end,
+  })
+end
+
+function createCatchPowerUp(x, y)
+  return PowerUp:New({
+    x = x,
+    y = y,
+    sprite = 1,
+    onCollision = function(self)
+      sfx(19)
+      self.show = false
+      paddle.stickyPowerUp = true
+    end,
+    remove = function(self)
+      paddle.stickyPowerUp = false
+    end,
+  })
+end
+
+function createMegaBallPowerUp(x, y)
+  return PowerUp:New({
+    x = x,
+    y = y,
+    sprite = 2,
+    onCollision = function(self)
+      sfx(19)
+      self.show = false
+      ball.mega = true
+    end,
+    remove = function(self)
+      ball.mega = false
+    end,
+  })
+end
+
+function createWidenPowerUp(x, y)
+  return PowerUp:New({
+    x = x,
+    y = y,
+    sprite = 3,
+    onCollision = function(self)
+      sfx(19)
+      self.show = false
+      paddle.w += 12
+    end,
+    remove = function(self)
+      paddle.w -= 12
+    end,
+  })
+end
+
+function createDoublePointsPowerUp(x, y)
+  return PowerUp:New({
+    x = x,
+    y = y,
+    sprite = 4,
+    onCollision = function(self)
+      sfx(19)
+      self.show = false
+      paddle.scoreMultiplier = 2
+    end,
+    remove = function(self)
+      paddle.scoreMultiplier = 1
+    end,
   })
 end
 
@@ -281,6 +435,7 @@ function updateGame()
     end
   end
   if btnp(5) and ball.sticky then
+    ball.dy = -ball.dyMax
     ball.sticky = false
   end
 
@@ -295,9 +450,49 @@ function updateGame()
   -- Restrict Paddle to Game Frame
   paddle.x = mid(gameFrame.x0, paddle.x, gameFrame.x1 - paddle.w)
 
+  -- Power Up Movement and Collision
+  for i = 1, #powerUpPills do
+    local powerUp = powerUpPills[i]
+    if powerUp.show then
+      powerUp.y += 0.5
+
+      if isCollisionBoxOverlapping(
+        powerUp.x, powerUp.y, 
+        powerUp.w, powerUp.h, 
+        paddle.x, paddle.y, 
+        paddle.w, paddle.h
+      ) then
+        powerUp:onCollision()
+        paddle.powerUps[#paddle.powerUps + 1] = powerUp
+      end
+    end
+  end
+
+  -- Remove Power Ups that are off screen
+  for i = #powerUpPills, 1, -1 do
+    local powerUp = powerUpPills[i]
+    if not powerUp.show then
+      del(powerUpPills, powerUp)
+    elseif powerUp.y > gameFrame.y1 then
+      del(powerUpPills, powerUp)
+    end
+  end
+
+  -- Power Up Timer
+  for i = #paddle.powerUps, 1, -1 do
+    local powerUp = paddle.powerUps[i]
+    if powerUp.timer > 0 then
+      powerUp.timer -= 1
+    else
+      powerUp:remove()
+      del(paddle.powerUps, powerUp)
+    end
+  end
+
   -- Stick Ball to Paddle
   if ball.sticky then
     ball.x = paddle.x + paddle.w / 2
+    ball.y = paddle.y - ball.r - 2
     return
   end
 
@@ -352,7 +547,7 @@ function updateGame()
   local collision = nil
   if paddleCollision then
     sfx(1)
-    score += 10
+    score += 10 * paddle.scoreMultiplier
     combo = 0
     collision = paddleCollision
 
@@ -364,8 +559,16 @@ function updateGame()
         --setBallAngle(max(0, ball.angle - 1))
       end
     end
+
+    if paddle.stickyPowerUp then
+      ball.sticky = true
+      return
+    end
   elseif brickCollision then
     collision = brickCollision
+    if ball.mega then
+      collision = nil
+    end
   end
 
   -- Calculate next ball position
@@ -429,7 +632,7 @@ end
 
 function drawLevelOver()
   rectfill(gameFrame.x0 + 20, 44, gameFrame.x1 - 20, 70, 5)
-  print("level complete!", 36, 50, 11)
+  print("complete!", 46, 50, 11)
   print("press ❎ to continue", 24, 60, 6)
 end
 
@@ -446,6 +649,13 @@ function drawGame()
     local brick = bricks[i]
     if brick.show then
       rectfill(brick.x, brick.y, brick.x + brick.w, brick.y + brick.h, brick.color)
+    end
+  end
+
+  for i = 1, #powerUpPills do
+    local powerUp = powerUpPills[i]
+    if powerUp.show then
+      spr(powerUp.sprite, powerUp.x, powerUp.y, 1, 1)
     end
   end
 
