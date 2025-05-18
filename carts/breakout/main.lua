@@ -42,13 +42,13 @@ function initGame()
 
   powerUpPills = {}
 
-  initBall()
+  ball = initBall()
 
   initBricks(gameFrame.x0 + 3, gameFrame.y0 + 3, 9, 4)
 end
 
 function initBall()
-  ball = {
+  local ball = {
     x = paddle.x + paddle.w / 2,
     dxMax = 1,
     dyMax = 1,
@@ -61,6 +61,7 @@ function initBall()
   ball.dx = ball.dxMax
   ball.dy = ball.dyMax
   ball.y = paddle.y - ball.r - 2
+  return ball
 end
 
 -- ===========================
@@ -128,6 +129,7 @@ Brick = {
   color = 0,
   hp = 1,
   show = true,
+  type = "B",
   onHit = function(self, playSound, continueCombo)
     if playSound then
       sfx(3 + min(combo, 7))
@@ -165,6 +167,7 @@ function createHardBrick(x, y, w, h)
     h = h,
     hp = 2,
     color = 2,
+    type = "H",
     onHit = function(self, playSound, continueCombo)
       if playSound then
         sfx(3 + min(combo, 7))
@@ -195,6 +198,7 @@ function createIndestructibleBrick(x, y, w, h)
     w = w,
     h = h,
     color = 5,
+    type = "I",
     onHit = function(self, playSound)
       if playSound then
         sfx(0)
@@ -210,6 +214,7 @@ function createExplodingBrick(x, y, w, h)
     w = w,
     h = h,
     color = 9,
+    type = "E",
     onHit = function(self, playSound, continueCombo)
       if playSound then
         sfx(18)
@@ -246,7 +251,7 @@ PowerUp = {
   y = 0,
   w = 8,
   h = 8,
-  timer = 600,
+  timer = 900,
   show = true,
   sprite = 0,
   onCollision = function (self)
@@ -268,6 +273,7 @@ function createPowerUpBrick(x, y, w, h)
     w = w,
     h = h,
     color = 12,
+    type = "P",
     onHit = function(self, playSound, continueCombo)
       if playSound then
         sfx(3 + min(combo, 7))
@@ -509,7 +515,7 @@ function updateGame()
     sfx(2)
     lives -= 1
     if lives == 0 then return end
-    initBall()
+    ball = initBall()
     return
   end
 
@@ -536,6 +542,7 @@ function updateGame()
       )
       if collision and not brickCollision then
         brickCollision = collision
+        brickCollision.brick = brick
       end
       if collision then
         brick:onHit(true, true)
@@ -566,7 +573,7 @@ function updateGame()
     end
   elseif brickCollision then
     collision = brickCollision
-    if ball.mega then
+    if ball.mega and brickCollision.brick.type != "I" then
       collision = nil
     end
   end
