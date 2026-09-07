@@ -6,7 +6,7 @@ A classic Breakout clone built with [PICO-8](https://www.lexaloffle.com/pico-8.p
 
 ## Play Game
 
-https://is386.itch.io/breakout
+https://1nder-games.itch.io/breakout
 
 ## Setup
 
